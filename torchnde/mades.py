@@ -158,21 +158,44 @@ class ConditionalGaussianMADE(nn.Module):
 
         return y
 
-    def train(self, x, y, n_epochs = 10000, lr = 1e-3, batch_size = 32, verbose = True, print_every=100,  optimizer = None):
+    def train(self, x, y, n_epochs = 10000, lr = 1e-3, batch_size = 32, verbose = True, print_every=100,  optimizer = None, patience = 20):
         if optimizer is None:
             optimizer = torch.optim.Adam(self.parameters(), lr=lr)
 
         dataset = TensorDataset(x, y)
-        trainloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        train_size = int(0.8 * len(dataset))
+        test_size = len(dataset) - train_size
+        train_dataset, validation_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
+
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        validation_loader = torch.utils.data.DataLoader(validation_dataset, batch_size=batch_size, shuffle=True)
+
+        best_loss = torch.tensor(1e30)
+        num_steps_np_improv = 0
 
         for epoch in range(n_epochs):
+            val_losses = []
             if verbose and epoch % print_every == 0 and epoch > 0: print(epoch, loss)
-            for x, y in trainloader:
+            for (x, y), (x_val, y_val) in zip(train_loader, validation_loader):
                 loss = -self.eval(x, y).mean()
                 optimizer.zero_grad()
                 loss.backward()
                 nn.utils.clip_grad_norm_(self.parameters(), 1.0)
                 optimizer.step()
+                
+                val_losses.append(-self.eval(x_val, y_val).mean())
+
+            val_loss = torch.mean(torch.tensor(val_losses))
+            if val_loss < best_loss:
+                best_loss = val_loss
+                num_steps_np_improv = 0
+            else:
+                num_steps_np_improv += 1
+                
+            if num_steps_np_improv == patience:
+                if verbose: print('Training completed after', epoch, 'epochs.')
+                break
+
 
 if __name__ == "__main__":
     input_size = 1
@@ -184,7 +207,7 @@ if __name__ == "__main__":
     print(xx.shape, yy.shape)
     xx.requires_grad = True
 
-    m.train(xx,yy,n_epochs=100)
+    m.train(xx,yy,n_epochs=1000, verbose=True)
 
     print(m.gen(xx[0]))
     print(yy[0])
