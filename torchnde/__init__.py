@@ -1,2 +1,2 @@
-from mafs import *
-from mades import *
+from .mades import *
+from .mafs import *
