@@ -37,7 +37,7 @@ class LinearMasked(nn.Module):
                 break
             # m function of the paper. Every hidden node, gets a number between 1 and D-1
             #if num_input_features > 1:
-            self.m = torch.randint(1, num_input_features, size=(out_features,)).type(
+            self.m = torch.randint(min(1, num_input_features-1), num_input_features, size=(out_features,)).type(
                 torch.int32
             )
             #else:
@@ -90,8 +90,8 @@ class ConditionalGaussianMADE(nn.Module):
     # This makes sure that the autoregressive test can verified
     def __init__(self, in_features, out_features, hidden_layers=[32, 32], activation = 'elu'):
 
-        if out_features < 2:
-            raise ValueError('The class currently only supports at least 2 out features')
+        #if out_features < 2:
+        #    raise ValueError('The class currently only supports at least 2 out features')
 
         super().__init__()
         if activation.lower() == 'elu':
@@ -175,8 +175,8 @@ class ConditionalGaussianMADE(nn.Module):
                 optimizer.step()
 
 if __name__ == "__main__":
-    input_size = 2
-    output_size = 2
+    input_size = 1
+    output_size = 1
     m = ConditionalGaussianMADE(in_features=input_size, out_features=output_size, hidden_layers=[32, 32])
     xx = torch.rand((1000, input_size))
     d = torch.randn((1000, output_size))
